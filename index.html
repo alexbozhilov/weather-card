@@ -253,6 +253,7 @@ function renderWeatherIcon(code, isDay) {
     }
   }
 
+      wrap.innerHTML = `
       <svg viewBox="0 0 240 120" width="100%" height="120" fill="none">
         ${isDay && code <= 3 ? `<g style="transform-origin:85px 65px;animation:spin 20s linear infinite;">${sunRays}</g>` : ''}
         <circle cx="85" cy="65" r="22" fill="#fbbf24"/>
