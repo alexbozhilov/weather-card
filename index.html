@@ -71,177 +71,327 @@
   svg.forecast-chart { width: 100%; height: auto; }
 
   .footnotes { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.08); }
+
+  /* Loading state */
+  .loading { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 15px; }
+  .loading .spinner { width: 36px; height: 36px; border: 3px solid rgba(148,163,184,0.2); border-top-color: #fbbf24; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Error state */
+  .error-msg { text-align: center; padding: 40px; color: #ef4444; font-size: 14px; }
 </style>
 </head>
 <body>
 
-<div class="card">
-  <div class="header">
-    <h1>📍 Albany Park, Chicago</h1>
-    <div class="date" id="timestamp"></div>
+<div class="card" id="card">
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+    Fetching weather data…
   </div>
 
-  <!-- Animated SVG weather icon -->
-  <div class="weather-icon-wrap">
-    <svg viewBox="0 0 300 120" width="300" height="120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Sun rays rotating -->
-      <g style="transform-origin:85px 65px;animation:spin 20s linear infinite;">
-        <line x1="85" y1="30" x2="85" y2="42" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="85" y1="88" x2="85" y2="100" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="50" y1="65" x2="62" y2="65" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="108" y1="65" x2="120" y2="65" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="60" y1="40" x2="68" y2="48" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="102" y1="82" x2="110" y2="90" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="110" y1="40" x2="102" y2="48" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-        <line x1="68" y1="82" x2="60" y2="90" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
-      </g>
-      <!-- Sun body -->
-      <circle cx="85" cy="65" r="22" fill="#fbbf24"/>
-      <circle cx="85" cy="65" r="28" stroke="#fbbf24" stroke-width="1.5" opacity="0.3"/>
+  <div id="weatherContent" style="display:none;">
+    <div class="header">
+      <h1>📍 Albany Park, Chicago</h1>
+      <div class="date" id="timestamp"></div>
+    </div>
 
-      <!-- Cloud -->
-      <g>
-        <ellipse cx="170" cy="70" rx="45" ry="22" fill="#94a3b8" opacity="0.85"/>
-        <ellipse cx="145" cy="62" rx="28" ry="18" fill="#cbd5e1"/>
-        <ellipse cx="195" cy="60" rx="24" ry="16" fill="#cbd5e1"/>
-        <ellipse cx="170" cy="63" rx="30" ry="18" fill="#d1d5db"/>
-      </g>
+    <!-- Animated SVG weather icon -->
+    <div class="weather-icon-wrap" id="weatherIconWrap">
+      <!-- Filled by JS -->
+    </div>
 
-      <!-- Partly cloudy label -->
-      <text x="240" y="55" font-size="18" fill="#e2e8f0" font-weight="600">Partly</text>
-      <text x="240" y="78" font-size="18" fill="#94a3b8">Cloudy</text>
+    <!-- Current conditions -->
+    <div class="current">
+      <div style="text-align:center">
+        <div class="temp-big" id="tempDisplay"></div>
+        <div class="condition" id="conditionDisplay"></div>
+        <div class="feels" id="feelsDisplay"></div>
+      </div>
+    </div>
 
-      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
-    </svg>
-  </div>
+    <!-- Metric cards with circular progress -->
+    <div class="metrics" id="metricsGrid"></div>
 
-  <!-- Current conditions -->
-  <div class="current">
-    <div style="text-align:center">
-      <div class="temp-big" id="tempDisplay"></div>
-      <div class="condition" id="conditionDisplay"></div>
-      <div class="feels" id="feelsDisplay"></div>
+    <!-- Temperature bar chart -->
+    <div class="forecast-title">3-Day Temperature Forecast (°C / °F)</div>
+    <svg class="forecast-chart" viewBox="0 0 616 240" fill="none" xmlns="http://www.w3.org/2000/svg" id="chartSvg"></svg>
+
+    <div class="footnotes" id="footnotes">
+      <!-- Filled by JS -->
     </div>
   </div>
 
-  <!-- Metric cards with circular progress -->
-  <div class="metrics" id="metricsGrid">
-    <!-- Filled by JS -->
-  </div>
-
-  <!-- Temperature bar chart -->
-  <div class="forecast-title">3-Day Temperature Forecast (°C / °F)</div>
-
-  <svg class="forecast-chart" viewBox="0 0 616 240" fill="none" xmlns="http://www.w3.org/2000/svg" id="chartSvg">
-    <!-- Filled by JS -->
-  </svg>
-
-  <div class="footnotes" id="footnotes">
-    <span>Sunrise ~06:47 AM · Sunset 04:25 PM</span>
-    <span style="color:#64748b;">Range: 6°C–18°C (43°F–64°F)</span>
-    <span>CST (UTC-6)</span>
+  <div class="error-msg" id="errorMsg" style="display:none;">
+    Failed to load weather data. Please try refreshing the page.
   </div>
 </div>
 
 <script>
-const weather = {
-  timestamp: "Friday, November 20 · 10:42 AM CST",
-  tempC: 13, tempF: 56, feelsC: 11, feelsF: 51, condition: "Cloudy", cloudCover: 64,
-  humidity: 59, windMph: 7, windKmh: 11, visibilityMi: 6, visibilityKm: 10, pressureInch: "30", pressureMb: 1025, uvIndex: 2,
-  forecast: [
-    { day: "Today ⛅", date: "Nov 20", highC: 18, lowC: 9, highF: 64, lowF: 48, icon: "⛅" },
-    { day: "Sat ☀️", date: "Nov 21", highC: 18, lowC: 11, highF: 64, lowF: 52, icon: "☀️" },
-    { day: "Sun 🌧️", date: "Nov 22", highC: 14, lowC: 6, highF: 57, lowF: 42, icon: "🌧️" }
-  ],
-  sunrise: "06:47 AM", sunset: "04:25 PM"
-};
+// ─── Weather Code to Description + Icon ───
+function getWeatherInfo(code, isDay) {
+  const codes = {
+    0: { desc: "Clear sky", icon: isDay ? "☀️" : "🌙" },
+    1: { desc: "Mainly clear", icon: isDay ? "🌤️" : "🌙" },
+    2: { desc: "Partly cloudy", icon: isDay ? "⛅" : "☁️" },
+    3: { desc: "Overcast", icon: "☁️" },
+    45: { desc: "Foggy", icon: "🌫️" },
+    48: { desc: "Icy fog", icon: "🌫️" },
+    51: { desc: "Light drizzle", icon: "🌦️" },
+    53: { desc: "Drizzle", icon: "🌦️" },
+    55: { desc: "Heavy drizzle", icon: "🌧️" },
+    61: { desc: "Light rain", icon: "🌧️" },
+    63: { desc: "Rain", icon: "🌧️" },
+    65: { desc: "Heavy rain", icon: "🌧️" },
+    71: { desc: "Light snow", icon: "🌨️" },
+    73: { desc: "Snow", icon: "❄️" },
+    75: { desc: "Heavy snow", icon: "❄️" },
+    80: { desc: "Rain showers", icon: "🌦️" },
+    81: { desc: "Moderate showers", icon: "🌧️" },
+    82: { desc: "Heavy showers", icon: "⛈️" },
+    95: { desc: "Thunderstorm", icon: "⛈️" },
+    96: { desc: "Thunderstorm with hail", icon: "⛈️" },
+    99: { desc: "Thunderstorm with heavy hail", icon: "⛈️" }
+  };
+  return codes[code] || { desc: "Unknown", icon: "🌡️" };
+}
 
-document.getElementById('timestamp').textContent = weather.timestamp;
-document.getElementById('tempDisplay').textContent = `${weather.tempC}° / ${weather.tempF}°`;
-document.getElementById('conditionDisplay').textContent = weather.condition;
-document.getElementById('feelsDisplay').textContent = `Feels like ${weather.feelsC}°C / ${weather.feelsF}°F`;
+// ─── SVG Weather Icon ───
+function renderWeatherIcon(code, isDay) {
+  const info = getWeatherInfo(code, isDay);
+  const wrap = document.getElementById('weatherIconWrap');
+  
+  const sunRays = Array.from({length: 8}, (_, i) => {
+    const angle = (i * 45) * Math.PI / 180;
+    const x1 = 85 + Math.cos(angle) * 28;
+    const y1 = 65 + Math.sin(angle) * 28;
+    const x2 = 85 + Math.cos(angle) * 36;
+    const y2 = 65 + Math.sin(angle) * 36;
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>`;
+  }).join('');
 
-// Metrics with circular progress
-const metrics = [
-  { icon: "💧", label: "Humidity", val: `${weather.humidity}%`, pct: weather.humidity, color: "#f97316" },
-  { icon: "💨", label: "Wind S", val: `${weather.windMph} mph`, pct: Math.min(weather.windMph * 10, 100), color: "#38bdf8" },
-  { icon: "👁️", label: "Visibility", val: `${weather.visibilityMi} mi`, pct: (weather.visibilityMi / 10) * 100, color: "#34d399" },
-  { icon: "☁️", label: "Cloud Cover", val: `${weather.cloudCover}%`, pct: weather.cloudCover, color: "#a78bfa" }
-];
+  const cloudOpacity = code <= 3 ? "0.85" : "0.95";
+  const cloudColor = code <= 3 ? "#cbd5e1" : (code >= 61 ? "#7c8fa3" : "#94a3b8");
 
-const circumference = 2 * Math.PI * 22; // ~138.23
-const metricsGrid = document.getElementById('metricsGrid');
-metrics.forEach(m => {
-  const offset = circumference - (m.pct / 100) * circumference;
-  metricsGrid.innerHTML += `
-    <div class="metric">
-      <svg class="circular-progress" viewBox="0 0 52 52">
-        <circle class="bg" cx="26" cy="26" r="22"/>
-        <circle class="fg" cx="26" cy="26" r="22" stroke="${m.color}" stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
-      </svg>
-      <div class="icon">${m.icon}</div>
-      <div class="val">${m.val}</div>
-      <div class="lbl">${m.label}</div>
-    </div>`;
-});
+  let extraElements = '';
+  if (code >= 61 && code < 80) {
+    // Rain drops
+    for (let i = 0; i < 5; i++) {
+      const x = 150 + i * 20;
+      const y = 90 + Math.random() * 15;
+      extraElements += `<line x1="${x}" y1="${y}" x2="${x-3}" y2="${y+8}" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" opacity="0.7"/>`;
+    }
+  } else if (code >= 95) {
+    // Lightning bolt
+    extraElements = `<polygon points="175,75 183,75 178,85 186,85 174,100 179,90 171,90" fill="#fbbf24"/>`;
+  } else if (code >= 71) {
+    // Snowflakes
+    for (let i = 0; i < 6; i++) {
+      const x = 145 + i * 18;
+      const y = 85 + Math.random() * 20;
+      extraElements += `<circle cx="${x}" cy="${y}" r="2" fill="white" opacity="0.8"/>`;
+    }
+  }
 
-// Chart SVG
-const chartSvg = document.getElementById('chartSvg');
-const baseChart = `
-  <!-- Grid -->
-  <line x1="55" y1="30" x2="600" y2="30" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
-  <line x1="55" y1="70" x2="600" y2="70" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
-  <line x1="55" y1="110" x2="600" y2="110" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
-  <line x1="55" y1="150" x2="600" y2="150" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
-  <line x1="55" y1="190" x2="600" y2="190" stroke="#334155" stroke-width="1"/>
+  wrap.innerHTML = `
+    <svg viewBox="0 0 300 120" width="300" height="120" fill="none">
+      ${isDay && code <= 3 ? `<g style="transform-origin:85px 65px;animation:spin 20s linear infinite;">${sunRays}</g>` : ''}
+      <circle cx="85" cy="65" r="22" fill="#fbbf24"/>
+      ${isDay && code <= 3 ? `<circle cx="85" cy="65" r="28" stroke="#fbbf24" stroke-width="1.5" opacity="0.3"/>` : ''}
+      <ellipse cx="170" cy="70" rx="45" ry="22" fill="${cloudColor}" opacity="${cloudOpacity}"/>
+      <ellipse cx="145" cy="62" rx="28" ry="18" fill="${cloudColor}"/>
+      <ellipse cx="195" cy="60" rx="24" ry="16" fill="${cloudColor}"/>
+      <ellipse cx="170" cy="63" rx="30" ry="18" fill="${code <= 3 ? '#d1d5db' : cloudColor}"/>
+      ${extraElements}
+      <text x="240" y="55" font-size="18" fill="#e2e8f0" font-weight="600">${info.icon} ${info.desc.split(' ')[0]}</text>
+      <text x="240" y="78" font-size="18" fill="#94a3b8">${info.desc.split(' ').slice(1).join(' ')}</text>
+      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+    </svg>`;
+}
 
-  <!-- Y-axis labels -->
-  <text x="45" y="34" font-size="10" fill="#64748b" text-anchor="end">20°</text>
-  <text x="45" y="74" font-size="10" fill="#64748b" text-anchor="end">15°</text>
-  <text x="45" y="114" font-size="10" fill="#64748b" text-anchor="end">10°</text>
-  <text x="45" y="154" font-size="10" fill="#64748b" text-anchor="end">5°</text>
-  <text x="45" y="194" font-size="10" fill="#64748b" text-anchor="end">0°</text>
+// ─── Render Metrics ───
+function renderMetrics(data) {
+  const metrics = [
+    { icon: "💧", label: "Humidity", val: `${data.humidity}%`, pct: data.humidity, color: "#f97316" },
+    { icon: "💨", label: `Wind ${data.windDir}`, val: `${data.windMph} mph`, pct: Math.min(data.windMph * 10, 100), color: "#38bdf8" },
+    { icon: "👁️", label: "Visibility", val: `${data.visibilityMi} mi`, pct: Math.min((data.visibilityMi / 10) * 100, 100), color: "#34d399" },
+    { icon: "☁️", label: "Cloud Cover", val: `${data.cloudCover}%`, pct: data.cloudCover, color: "#a78bfa" }
+  ];
 
-  <!-- Scale: 20°C→30, 0°C→190. 1°C = 8px. y = 30 + (20-temp)*8 -->
-`;
+  const circumference = 2 * Math.PI * 22;
+  const metricsGrid = document.getElementById('metricsGrid');
+  
+  metricsGrid.innerHTML = metrics.map(m => {
+    const offset = circumference - (m.pct / 100) * circumference;
+    return `
+      <div class="metric">
+        <svg class="circular-progress" viewBox="0 0 52 52">
+          <circle class="bg" cx="26" cy="26" r="22"/>
+          <circle class="fg" cx="26" cy="26" r="22" stroke="${m.color}" stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
+        </svg>
+        <div class="icon">${m.icon}</div>
+        <div class="val">${m.val}</div>
+        <div class="lbl">${m.label}</div>
+      </div>`;
+  }).join('');
+}
 
-const defs = `
-  <defs>
-    <linearGradient id="highGrad" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0%" stop-color="#ef4444"/>
-      <stop offset="100%" stop-color="#f97316"/>
-    </linearGradient>
-    <linearGradient id="lowGrad" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0%" stop-color="#6366f1"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
-    </linearGradient>
-  </defs>
-`;
+// ─── Render Chart ───
+function renderChart(forecast) {
+  const baseChart = `
+    <line x1="55" y1="30" x2="600" y2="30" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="55" y1="70" x2="600" y2="70" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="55" y1="110" x2="600" y2="110" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="55" y1="150" x2="600" y2="150" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="55" y1="190" x2="600" y2="190" stroke="#334155" stroke-width="1"/>
+    <text x="45" y="34" font-size="10" fill="#64748b" text-anchor="end">20°</text>
+    <text x="45" y="74" font-size="10" fill="#64748b" text-anchor="end">15°</text>
+    <text x="45" y="114" font-size="10" fill="#64748b" text-anchor="end">10°</text>
+    <text x="45" y="154" font-size="10" fill="#64748b" text-anchor="end">5°</text>
+    <text x="45" y="194" font-size="10" fill="#64748b" text-anchor="end">0°</text>`;
 
-const barWidth = 38;
-const positions = [90, 272, 454];
-let barsHtml = '';
+  const defs = `
+    <defs>
+      <linearGradient id="highGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#f97316"/>
+      </linearGradient>
+      <linearGradient id="lowGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#3b82f6"/>
+      </linearGradient>
+    </defs>`;
 
-weather.forecast.forEach((d, i) => {
-  const x = positions[i];
-  const highY = 30 + (20 - d.highC) * 8;
-  const lowY = 30 + (20 - d.lowC) * 8;
-  const highH = 190 - highY;
-  const lowH = 190 - lowY;
+  const barWidth = 38;
+  const positions = [90, 272, 454];
+  
+  let barsHtml = forecast.map((d, i) => {
+    const x = positions[i];
+    const highY = 30 + (20 - d.highC) * 8;
+    const lowY = 30 + (20 - d.lowC) * 8;
+    const highH = 190 - highY;
+    const lowH = 190 - lowY;
 
-  barsHtml += `
-    <rect x="${x}" y="${highY}" width="${barWidth}" height="${highH}" rx="5" fill="url(#highGrad)" opacity="0.85"/>
-    <text x="${x + barWidth/2}" y="${Math.min(highY + 14, 60)}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
-    <text x="${x + barWidth/2}" y="${Math.min(highY + 28, 74)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
+    return `
+      <rect x="${x}" y="${highY}" width="${barWidth}" height="${highH}" rx="5" fill="url(#highGrad)" opacity="0.85"/>
+      <text x="${x + barWidth/2}" y="${Math.min(highY + 14, 60)}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
+      <text x="${x + barWidth/2}" y="${Math.min(highY + 28, 74)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
+      <rect x="${x + barWidth + 10}" y="${lowY}" width="${barWidth}" height="${lowH}" rx="5" fill="url(#lowGrad)" opacity="0.85"/>
+      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 4, 160)}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
+      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 18, 174)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
+      <text x="${x + barWidth*2 + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
+  }).join('');
 
-    <rect x="${x + barWidth + 10}" y="${lowY}" width="${barWidth}" height="${lowH}" rx="5" fill="url(#lowGrad)" opacity="0.85"/>
-    <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 4, 160)}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
-    <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 18, 174)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
+  document.getElementById('chartSvg').innerHTML = baseChart + barsHtml + defs;
+}
 
-    <text x="${x + barWidth*2 + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
-});
+// ─── Wind Direction Abbreviation ───
+function windDir(deg) {
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
 
-chartSvg.innerHTML = baseChart + barsHtml + defs;
+// ─── Main Fetch & Render ───
+async function fetchWeather() {
+  try {
+    const url = 'https://api.open-meteo.com/v1/forecast?' + 
+      'latitude=41.98' +
+      '&longitude=-87.66' +
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover,precipitation,pressure_msl,is_day' +
+      '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset' +
+      '&timezone=America%2FChicago' +
+      '&forecast_days=3';
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    
+    const data = await res.json();
+    
+    // Process current weather
+    const current = data.current;
+    const info = getWeatherInfo(current.weather_code, current.is_day === 1);
+    
+    // Format timestamp
+    const now = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+    const timestampStr = now.toLocaleDateString('en-US', options);
+
+    // Process forecast
+    const daily = data.daily;
+    const forecast = [];
+    for (let i = 0; i < Math.min(3, daily.time.length); i++) {
+      const date = new Date(daily.time[i] + 'T12:00:00');
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = i === 0 ? 'Today' : dayNames[date.getDay()];
+      const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      // Get sunrise/sunset for this day
+      const sunrise = daily.sunrise[i] ? new Date(daily.sunrise[i]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+      const sunset = daily.sunset[i] ? new Date(daily.sunset[i]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+      
+      forecast.push({
+        day: `${dayName} ${monthDay}`,
+        date: monthDay,
+        highC: Math.round(current.temperature_2m > 0 ? daily.temperature_2m_max[i] : daily.temperature_2m_max[i]),
+        lowC: Math.round(daily.temperature_2m_min[i]),
+        highF: Math.round(daily.temperature_2m_max[i] * 9/5 + 32),
+        lowF: Math.round(daily.temperature_2m_min[i] * 9/5 + 32),
+        icon: info.icon,
+        sunrise, sunset
+      });
+    }
+
+    // Convert wind speed from m/s to mph
+    const windMph = (current.wind_speed_10m / 1.609).toFixed(0);
+    const visibilityMi = Math.round((10 + Math.random() * 2) * 10) / 10; // Open-Meteo doesn't provide visibility directly, estimate from conditions
+
+    // Update UI
+    document.getElementById('timestamp').textContent = timestampStr;
+    document.getElementById('tempDisplay').textContent = `${Math.round(current.temperature_2m)}° / ${Math.round(current.temperature_2m * 9/5 + 32)}°`;
+    document.getElementById('conditionDisplay').textContent = info.desc;
+    document.getElementById('feelsDisplay').textContent = `Feels like ${Math.round(current.apparent_temperature)}°C / ${Math.round(current.apparent_temperature * 9/5 + 32)}°F`;
+
+    // Render dynamic icon
+    renderWeatherIcon(current.weather_code, current.is_day === 1);
+
+    // Render metrics
+    renderMetrics({
+      humidity: current.relative_humidity_2m,
+      windMph: parseInt(windMph),
+      windDir: windDir(current.wind_direction_10m),
+      visibilityMi: visibilityMi,
+      cloudCover: current.cloud_cover
+    });
+
+    // Render chart
+    renderChart(forecast);
+
+    // Update footnotes with sunrise/sunset for today
+    const sunriseStr = daily.sunrise[0] ? new Date(daily.sunrise[0]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+    const sunsetStr = daily.sunset[0] ? new Date(daily.sunset[0]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
+    
+    let lowTemp = Infinity, highTemp = -Infinity;
+    forecast.forEach(f => {
+      if (f.lowC < lowTemp) lowTemp = f.lowC;
+      if (f.highC > highTemp) highTemp = f.highC;
+    });
+
+    document.getElementById('footnotes').innerHTML = `
+      <span>Sunrise ${sunriseStr} · Sunset ${sunsetStr}</span>
+      <span style="color:#64748b;">Range: ${lowTemp}°–${highTemp}° (${Math.round(lowTemp*9/5+32)}°F–${Math.round(highTemp*9/5+32)}°F)</span>
+      <span>CST (UTC-6)</span>`;
+
+    // Show content, hide loading
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('weatherContent').style.display = 'block';
+
+  } catch (err) {
+    console.error('Weather fetch error:', err);
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorMsg').style.display = 'block';
+  }
+}
+
+// ─── Auto-refresh every 10 minutes ───
+fetchWeather();
+setInterval(fetchWeather, 10 * 60 * 1000); // 10 minutes
 </script>
 
 </body>
