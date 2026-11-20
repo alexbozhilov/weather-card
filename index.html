@@ -46,7 +46,7 @@
   .current .feels { font-size: 13px; color: #64748b; margin-top: 2px; }
 
   /* Circular progress metrics */
-  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .metrics { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
   .metric {
     background: rgba(51, 65, 85, 0.3); border-radius: 14px; padding: 16px 10px; text-align: center;
     border: 1px solid rgba(148, 163, 184, 0.06); transition: transform 0.2s, border-color 0.2s;
@@ -56,6 +56,11 @@
   .metric .icon { font-size: 22px; margin-bottom: 6px; }
   .metric .val { font-size: 17px; font-weight: 700; color: #f1f5f9; }
   .metric .lbl { font-size: 11px; color: #64748b; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* AQI badge */
+  .aqi-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-top: 4px; color: #fff;
+  }
 
   /* Circular SVG progress */
   .circular-progress { width: 52px; height: 52px; margin: 0 auto 8px; }
@@ -155,6 +160,25 @@ function getWeatherInfo(code, isDay) {
   return codes[code] || { desc: "Unknown", icon: "🌡️" };
 }
 
+// ─── UV Index Color & Label ───
+function uvInfo(uv) {
+  if (uv <= 2) return { color: "#22c55e", label: "Low" };
+  if (uv <= 5) return { color: "#eab308", label: "Moderate" };
+  if (uv <= 7) return { color: "#f97316", label: "High" };
+  if (uv <= 10) return { color: "#ef4444", label: "Very High" };
+  return { color: "#a855f7", label: "Extreme" };
+}
+
+// ─── AQI Color & Label ───
+function aqiInfo(aqi) {
+  if (aqi <= 50) return { color: "#22c55e", label: "Good" };
+  if (aqi <= 100) return { color: "#eab308", label: "Moderate" };
+  if (aqi <= 150) return { color: "#f97316", label: "Unhealthy (Sensitive)" };
+  if (aqi <= 200) return { color: "#ef4444", label: "Unhealthy" };
+  if (aqi <= 300) return { color: "#8b5cf6", label: "Very Unhealthy" };
+  return { color: "#7f1d1d", label: "Hazardous" };
+}
+
 // ─── SVG Weather Icon ───
 function renderWeatherIcon(code, isDay) {
   const info = getWeatherInfo(code, isDay);
@@ -174,17 +198,14 @@ function renderWeatherIcon(code, isDay) {
 
   let extraElements = '';
   if (code >= 61 && code < 80) {
-    // Rain drops
     for (let i = 0; i < 5; i++) {
       const x = 150 + i * 20;
       const y = 90 + Math.random() * 15;
       extraElements += `<line x1="${x}" y1="${y}" x2="${x-3}" y2="${y+8}" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" opacity="0.7"/>`;
     }
   } else if (code >= 95) {
-    // Lightning bolt
     extraElements = `<polygon points="175,75 183,75 178,85 186,85 174,100 179,90 171,90" fill="#fbbf24"/>`;
   } else if (code >= 71) {
-    // Snowflakes
     for (let i = 0; i < 6; i++) {
       const x = 145 + i * 18;
       const y = 85 + Math.random() * 20;
@@ -210,17 +231,40 @@ function renderWeatherIcon(code, isDay) {
 
 // ─── Render Metrics ───
 function renderMetrics(data) {
+  const circumference = 2 * Math.PI * 22;
+
+  // AQI badge HTML if available
+  let aqiHtml = '';
+  if (data.aqi !== null && data.aqi !== undefined) {
+    const aqiInfoObj = aqiInfo(data.aqi);
+    aqiHtml = `<span class="aqi-badge" style="background:${aqiInfoObj.color}">${aqiInfoObj.label}</span>`;
+  }
+
+  // UV badge HTML if available
+  let uvHtml = '';
+  if (data.uvIndex !== null && data.uvIndex !== undefined) {
+    const uvInfoObj = uvInfo(data.uvIndex);
+    uvHtml = `<span class="aqi-badge" style="background:${uvInfoObj.color}">${uvInfoObj.label}</span>`;
+  }
+
   const metrics = [
+    { icon: "🌡️", label: "UV Index", val: data.uvIndex !== null && data.uvIndex !== undefined ? `${data.uvIndex.toFixed(1)}` : "N/A", pct: Math.min((data.uvIndex || 0) * 10, 100), color: data.uvInfoObj?.color || "#64748b" },
+    { icon: "🫁", label: "Air Quality", val: data.aqi !== null && data.aqi !== undefined ? `AQI ${data.aqi}` : "N/A", pct: Math.min(((data.aqi || 0) / 301) * 100, 100), color: data.aqiInfoObj?.color || "#64748b" },
     { icon: "💧", label: "Humidity", val: `${data.humidity}%`, pct: data.humidity, color: "#f97316" },
     { icon: "💨", label: `Wind ${data.windDir}`, val: `${data.windMph} mph`, pct: Math.min(data.windMph * 10, 100), color: "#38bdf8" },
-    { icon: "👁️", label: "Visibility", val: `${data.visibilityMi} mi`, pct: Math.min((data.visibilityMi / 10) * 100, 100), color: "#34d399" },
     { icon: "☁️", label: "Cloud Cover", val: `${data.cloudCover}%`, pct: data.cloudCover, color: "#a78bfa" }
   ];
 
-  const circumference = 2 * Math.PI * 22;
   const metricsGrid = document.getElementById('metricsGrid');
   
-  metricsGrid.innerHTML = metrics.map(m => {
+  // Recalculate percentiles for AQI (0-300 scale) and UV (0-11 scale)
+  const adjustedMetrics = metrics.map(m => {
+    if (m.label === "UV Index") m.pct = Math.min(((data.uvIndex || 0) / 11) * 100, 100);
+    if (m.label === "Air Quality") m.pct = Math.min(((data.aqi || 0) / 301) * 100, 100);
+    return m;
+  });
+
+  metricsGrid.innerHTML = adjustedMetrics.map(m => {
     const offset = circumference - (m.pct / 100) * circumference;
     return `
       <div class="metric">
@@ -230,6 +274,8 @@ function renderMetrics(data) {
         </svg>
         <div class="icon">${m.icon}</div>
         <div class="val">${m.val}</div>
+        ${m.label === "Air Quality" && aqiHtml ? `<div style="margin:4px 0;">${aqiHtml}</div>` : ''}
+        ${m.label === "UV Index" && uvHtml ? `<div style="margin:4px 0;">${uvHtml}</div>` : ''}
         <div class="lbl">${m.label}</div>
       </div>`;
   }).join('');
@@ -291,30 +337,46 @@ function windDir(deg) {
 // ─── Main Fetch & Render ───
 async function fetchWeather() {
   try {
-    const url = 'https://api.open-meteo.com/v1/forecast?' + 
+    // Primary weather API with UV index included
+    const weatherUrl = 'https://api.open-meteo.com/v1/forecast?' + 
       'latitude=41.98' +
       '&longitude=-87.66' +
-      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover,precipitation,pressure_msl,is_day' +
+      '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover,precipitation,pressure_msl,is_day,uv_index' +
       '&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset' +
       '&timezone=America%2FChicago' +
       '&forecast_days=3';
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`API error: ${res.status}`);
+    // Air quality API (separate endpoint)
+    const aqiUrl = 'https://air-quality-api.open-meteo.com/v1/air-quality?' + 
+      'latitude=41.98' +
+      '&longitude=-87.66' +
+      '&current=us_aqi,dust,aqi_eu,aqi_us pm2_5,pm10,no2,so2,o3,co' +
+      '&timezone=America%2FChicago';
+
+    const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
     
-    const data = await res.json();
+    if (!weatherRes.ok) throw new Error(`Weather API error: ${weatherRes.status}`);
     
+    const weatherData = await weatherRes.json();
+    let aqiData = null;
+    try {
+      if (aqiRes.ok) aqiData = await aqiRes.json();
+    } catch (e) { /* air quality may fail gracefully */ }
+
     // Process current weather
-    const current = data.current;
+    const current = weatherData.current;
     const info = getWeatherInfo(current.weather_code, current.is_day === 1);
     
+    // UV index color/label
+    const uvInfoObj = current.uv_index !== null ? uvInfo(current.uv_index) : null;
+
     // Format timestamp
     const now = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
     const timestampStr = now.toLocaleDateString('en-US', options);
 
     // Process forecast
-    const daily = data.daily;
+    const daily = weatherData.daily;
     const forecast = [];
     for (let i = 0; i < Math.min(3, daily.time.length); i++) {
       const date = new Date(daily.time[i] + 'T12:00:00');
@@ -322,25 +384,27 @@ async function fetchWeather() {
       const dayName = i === 0 ? 'Today' : dayNames[date.getDay()];
       const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       
-      // Get sunrise/sunset for this day
-      const sunrise = daily.sunrise[i] ? new Date(daily.sunrise[i]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
-      const sunset = daily.sunset[i] ? new Date(daily.sunset[i]).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--';
-      
       forecast.push({
         day: `${dayName} ${monthDay}`,
         date: monthDay,
-        highC: Math.round(current.temperature_2m > 0 ? daily.temperature_2m_max[i] : daily.temperature_2m_max[i]),
+        highC: Math.round(daily.temperature_2m_max[i]),
         lowC: Math.round(daily.temperature_2m_min[i]),
         highF: Math.round(daily.temperature_2m_max[i] * 9/5 + 32),
         lowF: Math.round(daily.temperature_2m_min[i] * 9/5 + 32),
         icon: info.icon,
-        sunrise, sunset
       });
     }
 
     // Convert wind speed from m/s to mph
     const windMph = (current.wind_speed_10m / 1.609).toFixed(0);
-    const visibilityMi = Math.round((10 + Math.random() * 2) * 10) / 10; // Open-Meteo doesn't provide visibility directly, estimate from conditions
+
+    // Get AQI value
+    let aqi = null;
+    if (aqiData && aqiData.current) {
+      aqi = aqiData.current.us_aqi !== undefined ? Math.round(aqiData.current.us_aqi) : null;
+    }
+
+    const aqiInfoObj = aqi !== null ? aqiInfo(aqi) : null;
 
     // Update UI
     document.getElementById('timestamp').textContent = timestampStr;
@@ -351,12 +415,15 @@ async function fetchWeather() {
     // Render dynamic icon
     renderWeatherIcon(current.weather_code, current.is_day === 1);
 
-    // Render metrics
+    // Render metrics (UV, AQI, Humidity, Wind, Cloud)
     renderMetrics({
+      uvIndex: current.uv_index,
+      uvInfoObj,
+      aqi: aqi,
+      aqiInfoObj,
       humidity: current.relative_humidity_2m,
       windMph: parseInt(windMph),
       windDir: windDir(current.wind_direction_10m),
-      visibilityMi: visibilityMi,
       cloudCover: current.cloud_cover
     });
 
