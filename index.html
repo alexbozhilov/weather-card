@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather — Albany Park, Chicago</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0c4a6e 100%);
+    color: #e2e8f0;
+    padding: 24px;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+  .card {
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    padding: 32px;
+    max-width: 680px;
+    width: 100%;
+    box-shadow: 0 25px 60px -12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  .header { text-align: center; margin-bottom: 24px; position: relative; }
+  .header h1 { font-size: 22px; font-weight: 700; color: #f8fafc; margin-bottom: 6px; }
+  .header .date { font-size: 13px; color: #94a3b8; }
+
+  /* Animated sun/cloud icon */
+  .weather-icon-wrap {
+    width: 100%; height: 120px; margin-bottom: 16px; display: flex; justify-content: center; align-items: center;
+  }
+
+  .current {
+    display: flex; align-items: center; justify-content: center; gap: 24px;
+    padding: 28px; background: rgba(51, 65, 85, 0.35); border-radius: 16px;
+    margin-bottom: 24px; border: 1px solid rgba(148,163,184,0.08);
+  }
+  .current .temp-big { font-size: 56px; font-weight: 700; background: linear-gradient(135deg, #fbbf24, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .current .condition { font-size: 16px; color: #cbd5e1; margin-top: 4px; }
+  .current .feels { font-size: 13px; color: #64748b; margin-top: 2px; }
+
+  /* Circular progress metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .metric {
+    background: rgba(51, 65, 85, 0.3); border-radius: 14px; padding: 16px 10px; text-align: center;
+    border: 1px solid rgba(148, 163, 184, 0.06); transition: transform 0.2s, border-color 0.2s;
+    cursor: default;
+  }
+  .metric:hover { transform: translateY(-2px); border-color: rgba(148,163,184,0.2); }
+  .metric .icon { font-size: 22px; margin-bottom: 6px; }
+  .metric .val { font-size: 17px; font-weight: 700; color: #f1f5f9; }
+  .metric .lbl { font-size: 11px; color: #64748b; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* Circular SVG progress */
+  .circular-progress { width: 52px; height: 52px; margin: 0 auto 8px; }
+  .circular-progress circle { fill: none; stroke-width: 4; transform: rotate(-90deg); transform-origin: center; }
+  .circular-progress .bg { stroke: rgba(100,116,139,0.2); }
+  .circular-progress .fg { stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+
+  .forecast-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .forecast-title::after { content:''; flex:1; height:1px; background:rgba(148,163,184,0.15); }
+
+  /* Bar chart */
+  .chart-wrap { margin-bottom: 20px; }
+  svg.forecast-chart { width: 100%; height: auto; }
+
+  .footnotes { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; padding-top: 12px; border-top: 1px solid rgba(148,163,184,0.08); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <h1>📍 Albany Park, Chicago</h1>
+    <div class="date" id="timestamp"></div>
+  </div>
+
+  <!-- Animated SVG weather icon -->
+  <div class="weather-icon-wrap">
+    <svg viewBox="0 0 300 120" width="300" height="120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Sun rays rotating -->
+      <g style="transform-origin:85px 65px;animation:spin 20s linear infinite;">
+        <line x1="85" y1="30" x2="85" y2="42" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="85" y1="88" x2="85" y2="100" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="50" y1="65" x2="62" y2="65" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="108" y1="65" x2="120" y2="65" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="60" y1="40" x2="68" y2="48" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="102" y1="82" x2="110" y2="90" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="110" y1="40" x2="102" y2="48" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+        <line x1="68" y1="82" x2="60" y2="90" stroke="#fbbf24" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <!-- Sun body -->
+      <circle cx="85" cy="65" r="22" fill="#fbbf24"/>
+      <circle cx="85" cy="65" r="28" stroke="#fbbf24" stroke-width="1.5" opacity="0.3"/>
+
+      <!-- Cloud -->
+      <g>
+        <ellipse cx="170" cy="70" rx="45" ry="22" fill="#94a3b8" opacity="0.85"/>
+        <ellipse cx="145" cy="62" rx="28" ry="18" fill="#cbd5e1"/>
+        <ellipse cx="195" cy="60" rx="24" ry="16" fill="#cbd5e1"/>
+        <ellipse cx="170" cy="63" rx="30" ry="18" fill="#d1d5db"/>
+      </g>
+
+      <!-- Partly cloudy label -->
+      <text x="240" y="55" font-size="18" fill="#e2e8f0" font-weight="600">Partly</text>
+      <text x="240" y="78" font-size="18" fill="#94a3b8">Cloudy</text>
+
+      <style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+    </svg>
+  </div>
+
+  <!-- Current conditions -->
+  <div class="current">
+    <div style="text-align:center">
+      <div class="temp-big" id="tempDisplay"></div>
+      <div class="condition" id="conditionDisplay"></div>
+      <div class="feels" id="feelsDisplay"></div>
+    </div>
+  </div>
+
+  <!-- Metric cards with circular progress -->
+  <div class="metrics" id="metricsGrid">
+    <!-- Filled by JS -->
+  </div>
+
+  <!-- Temperature bar chart -->
+  <div class="forecast-title">3-Day Temperature Forecast (°C / °F)</div>
+
+  <svg class="forecast-chart" viewBox="0 0 616 240" fill="none" xmlns="http://www.w3.org/2000/svg" id="chartSvg">
+    <!-- Filled by JS -->
+  </svg>
+
+  <div class="footnotes" id="footnotes">
+    <span>Sunrise ~06:47 AM · Sunset 04:25 PM</span>
+    <span style="color:#64748b;">Range: 6°C–18°C (43°F–64°F)</span>
+    <span>CST (UTC-6)</span>
+  </div>
+</div>
+
+<script>
+const weather = {
+  timestamp: "Friday, November 20 · 10:42 AM CST",
+  tempC: 13, tempF: 56, feelsC: 11, feelsF: 51, condition: "Cloudy", cloudCover: 64,
+  humidity: 59, windMph: 7, windKmh: 11, visibilityMi: 6, visibilityKm: 10, pressureInch: "30", pressureMb: 1025, uvIndex: 2,
+  forecast: [
+    { day: "Today ⛅", date: "Nov 20", highC: 18, lowC: 9, highF: 64, lowF: 48, icon: "⛅" },
+    { day: "Sat ☀️", date: "Nov 21", highC: 18, lowC: 11, highF: 64, lowF: 52, icon: "☀️" },
+    { day: "Sun 🌧️", date: "Nov 22", highC: 14, lowC: 6, highF: 57, lowF: 42, icon: "🌧️" }
+  ],
+  sunrise: "06:47 AM", sunset: "04:25 PM"
+};
+
+document.getElementById('timestamp').textContent = weather.timestamp;
+document.getElementById('tempDisplay').textContent = `${weather.tempC}° / ${weather.tempF}°`;
+document.getElementById('conditionDisplay').textContent = weather.condition;
+document.getElementById('feelsDisplay').textContent = `Feels like ${weather.feelsC}°C / ${weather.feelsF}°F`;
+
+// Metrics with circular progress
+const metrics = [
+  { icon: "💧", label: "Humidity", val: `${weather.humidity}%`, pct: weather.humidity, color: "#f97316" },
+  { icon: "💨", label: "Wind S", val: `${weather.windMph} mph`, pct: Math.min(weather.windMph * 10, 100), color: "#38bdf8" },
+  { icon: "👁️", label: "Visibility", val: `${weather.visibilityMi} mi`, pct: (weather.visibilityMi / 10) * 100, color: "#34d399" },
+  { icon: "☁️", label: "Cloud Cover", val: `${weather.cloudCover}%`, pct: weather.cloudCover, color: "#a78bfa" }
+];
+
+const circumference = 2 * Math.PI * 22; // ~138.23
+const metricsGrid = document.getElementById('metricsGrid');
+metrics.forEach(m => {
+  const offset = circumference - (m.pct / 100) * circumference;
+  metricsGrid.innerHTML += `
+    <div class="metric">
+      <svg class="circular-progress" viewBox="0 0 52 52">
+        <circle class="bg" cx="26" cy="26" r="22"/>
+        <circle class="fg" cx="26" cy="26" r="22" stroke="${m.color}" stroke-dasharray="${circumference.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"/>
+      </svg>
+      <div class="icon">${m.icon}</div>
+      <div class="val">${m.val}</div>
+      <div class="lbl">${m.label}</div>
+    </div>`;
+});
+
+// Chart SVG
+const chartSvg = document.getElementById('chartSvg');
+const baseChart = `
+  <!-- Grid -->
+  <line x1="55" y1="30" x2="600" y2="30" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="55" y1="70" x2="600" y2="70" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="55" y1="110" x2="600" y2="110" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="55" y1="150" x2="600" y2="150" stroke="#334155" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="55" y1="190" x2="600" y2="190" stroke="#334155" stroke-width="1"/>
+
+  <!-- Y-axis labels -->
+  <text x="45" y="34" font-size="10" fill="#64748b" text-anchor="end">20°</text>
+  <text x="45" y="74" font-size="10" fill="#64748b" text-anchor="end">15°</text>
+  <text x="45" y="114" font-size="10" fill="#64748b" text-anchor="end">10°</text>
+  <text x="45" y="154" font-size="10" fill="#64748b" text-anchor="end">5°</text>
+  <text x="45" y="194" font-size="10" fill="#64748b" text-anchor="end">0°</text>
+
+  <!-- Scale: 20°C→30, 0°C→190. 1°C = 8px. y = 30 + (20-temp)*8 -->
+`;
+
+const defs = `
+  <defs>
+    <linearGradient id="highGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="lowGrad" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+`;
+
+const barWidth = 38;
+const positions = [90, 272, 454];
+let barsHtml = '';
+
+weather.forecast.forEach((d, i) => {
+  const x = positions[i];
+  const highY = 30 + (20 - d.highC) * 8;
+  const lowY = 30 + (20 - d.lowC) * 8;
+  const highH = 190 - highY;
+  const lowH = 190 - lowY;
+
+  barsHtml += `
+    <rect x="${x}" y="${highY}" width="${barWidth}" height="${highH}" rx="5" fill="url(#highGrad)" opacity="0.85"/>
+    <text x="${x + barWidth/2}" y="${Math.min(highY + 14, 60)}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
+    <text x="${x + barWidth/2}" y="${Math.min(highY + 28, 74)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
+
+    <rect x="${x + barWidth + 10}" y="${lowY}" width="${barWidth}" height="${lowH}" rx="5" fill="url(#lowGrad)" opacity="0.85"/>
+    <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 4, 160)}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
+    <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 18, 174)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
+
+    <text x="${x + barWidth*2 + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
+});
+
+chartSvg.innerHTML = baseChart + barsHtml + defs;
+</script>
+
+</body>
+</html>
