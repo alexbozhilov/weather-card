@@ -366,9 +366,9 @@ function renderChart(forecast) {
       <text x="${x + barWidth/2}" y="${highLabelY}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
       <text x="${x + barWidth/2}" y="${Math.min(highLabelY + 16, highY + 30)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
       <rect x="${x + barWidth + 10}" y="${lowY}" width="${barWidth}" height="${lowH}" rx="5" fill="url(#lowGrad)" opacity="0.85"/>
-      <text x="${x + barWidth*2 + 10}" y="${lowLabelY}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
-      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowLabelY - 14, lowY + lowH/2)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
-      <text x="${x + barWidth*2 + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
+      <text x="${x + barWidth + 10 + barWidth/2}" y="${lowLabelY}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
+      <text x="${x + barWidth + 10 + barWidth/2}" y="${Math.min(lowLabelY - 14, lowY + lowH/2)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
+      <text x="${x + barWidth + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
   }).join('');
 
   document.getElementById('chartSvg').innerHTML = defs + baseChart + barsHtml;
