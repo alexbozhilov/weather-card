@@ -373,7 +373,7 @@ async function fetchWeather() {
     const aqiUrl = 'https://air-quality-api.open-meteo.com/v1/air-quality?' + 
       'latitude=41.98' +
       '&longitude=-87.66' +
-      '&current=us_aqi,dust,aqi_eu,aqi_us,pm2_5,pm10,no2,so2,o3,co' +
+      '&current=us_aqi,pm2_5' +
       '&timezone=America%2FChicago';
 
     const [weatherRes, aqiRes] = await Promise.all([fetch(weatherUrl), fetch(aqiUrl)]);
