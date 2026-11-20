@@ -357,17 +357,21 @@ function renderChart(forecast) {
     const highH = 190 - highY;
     const lowH = 190 - lowY;
 
+    // Position labels relative to bar edges so they stay inside even on short bars
+    const highLabelY = Math.min(highY + 14, highH > 20 ? highY + 14 : highY + 8);
+    const lowLabelY = Math.max(lowY + lowH - 16, lowH > 20 ? lowY + lowH - 16 : lowY + lowH - 8);
+
     return `
       <rect x="${x}" y="${highY}" width="${barWidth}" height="${highH}" rx="5" fill="url(#highGrad)" opacity="0.85"/>
-      <text x="${x + barWidth/2}" y="${Math.min(highY + 14, 60)}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
-      <text x="${x + barWidth/2}" y="${Math.min(highY + 28, 74)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
+      <text x="${x + barWidth/2}" y="${highLabelY}" font-size="12" fill="#fbbf24" text-anchor="middle" font-weight="700">${d.highC}°</text>
+      <text x="${x + barWidth/2}" y="${Math.min(highLabelY + 16, highY + 30)}" font-size="9" fill="#fb923c" text-anchor="middle">${d.highF}°F</text>
       <rect x="${x + barWidth + 10}" y="${lowY}" width="${barWidth}" height="${lowH}" rx="5" fill="url(#lowGrad)" opacity="0.85"/>
-      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 4, 160)}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
-      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowY + lowH/2 + 18, 174)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
+      <text x="${x + barWidth*2 + 10}" y="${lowLabelY}" font-size="12" fill="#93c5fd" text-anchor="middle" font-weight="700">${d.lowC}°</text>
+      <text x="${x + barWidth*2 + 10}" y="${Math.min(lowLabelY - 14, lowY + lowH/2)}" font-size="9" fill="#60a5fa" text-anchor="middle">${d.lowF}°F</text>
       <text x="${x + barWidth*2 + 5}" y="215" font-size="13" fill="#e2e8f0" text-anchor="middle" font-weight="600">${d.day}</text>`;
   }).join('');
 
-  document.getElementById('chartSvg').innerHTML = baseChart + barsHtml + defs;
+  document.getElementById('chartSvg').innerHTML = defs + baseChart + barsHtml;
 }
 
 // ─── Wind Direction Abbreviation ───
